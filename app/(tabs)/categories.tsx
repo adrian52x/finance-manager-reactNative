@@ -3,56 +3,51 @@ import React, { useEffect, useState } from 'react'
 import { Category } from '@/types/category';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CreateCategoryDTO } from '@/types/CreateCategoryDTO';
+import { CategoriesAPI } from '@/api/CategoriesAPI';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '../../store/store';
+import { createCategory, fetchCategories, deleteCategory, clearError } from '@/store/categorySlice';
 
 
 const CategoriesScreen = () => {
-    const apiUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+    const dispatch = useDispatch<AppDispatch>()
+    const categories = useSelector((state: RootState) => state.category.categories)
+    const categoryError = useSelector((state: RootState) => state.category.error)
 
-    const [categories, setCategories] = useState<Category[]>([]);
+
     const [newCategoryName, setNewCategoryName] = useState('');
     const [isAddingCategory, setIsAddingCategory] = useState(false);
 
     useEffect(() => {
-        fetchCategories();
-}, []);
+        dispatch(fetchCategories())
+    }, []);
 
+    // Clear the error after 3 seconds
+    useEffect(() => {
+        if (categoryError) {
+        const timer = setTimeout(() => {
+            dispatch(clearError());
+        }, 3000); // Clear error after 3 seconds
 
-const fetchCategories = async () => {
-    try {
-        const response = await fetch(`${apiUrl}/api/categories`); // Replace with your backend URL
-        const data = await response.json();
-        
-        setCategories(data);
-    } catch (error) {
-        console.error('Error fetching categories:', error);
-    }
-};
+        return () => clearTimeout(timer); // Cleanup the timer
+        }
+    }, [categoryError, dispatch]);
+
 
 const handleAddCategory = async () => {
     if (newCategoryName.trim()) {
-    try {
-        const response = await fetch(`${apiUrl}/api/categories`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ title: newCategoryName } as CreateCategoryDTO),
-        });
-        
-        if (response.ok) {
-            setNewCategoryName('');
-            setIsAddingCategory(false);
-            fetchCategories(); // Refetch categories after adding
-        } else {
-            console.error('Failed to add category');
-        }
-    } catch (error) {
-        console.error('Error adding category:', error);
+        const newCategory = new CreateCategoryDTO(newCategoryName)
+        dispatch(createCategory(newCategory))
+
+        //setNewCategoryName('');
+        //setIsAddingCategory(false);
     }
-    }
-};
+}
+
 
 const handleDeleteCategory = async (category: Category) => {
+    console.log('Deleting category:', category);
+    
     Alert.alert(
         'Delete Category',
         `Are you sure you want to delete this category (${category.title})?`,
@@ -65,14 +60,7 @@ const handleDeleteCategory = async (category: Category) => {
                 text: 'OK',
                 onPress: async () => {
                     try {
-                        const response = await fetch(`${apiUrl}/api/categories/${category.id}`, {
-                            method: 'DELETE',
-                        });
-                        if (response.ok) {
-                            fetchCategories();
-                        } else {
-                            console.error('Failed to delete category');
-                        }
+                        dispatch(deleteCategory(category.id))
                     } catch (error) {
                         console.error('Error deleting category:', error);
                     }
@@ -114,14 +102,37 @@ const handleDeleteCategory = async (category: Category) => {
                 </View>
                 )}
             />
+
+            {/* Display the error message */}
+            {categoryError && (
+                <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{categoryError}</Text>
+                </View>
+            )}   
+
         </SafeAreaView>    
     )
 }
 
 const styles = StyleSheet.create({
-  container: {
-      padding: 10,
-  },
+    container: {
+        padding: 10,
+        height: '100%',
+        backgroundColor: '#fff',
+    },
+    errorContainer: {
+        position: 'absolute',
+        bottom: 20,
+        left: 20,
+        right: 20,
+        backgroundColor: 'red',
+        padding: 10,
+        borderRadius: 5,
+    },
+    errorText: {
+        color: 'white',
+        textAlign: 'center',
+    },
 });
 
 export default CategoriesScreen
