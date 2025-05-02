@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, FlatList, Modal, Button, TextInput } from 'react-native'
+import { View, Text, StyleSheet, FlatList, Modal, Button, TextInput, Alert } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { Picker } from '@react-native-picker/picker';
 
@@ -6,13 +6,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Entry } from '@/types/entry';
 import { CreateEntryDTO } from '@/types/CreateEntryDTO';
 import { Category } from '@/types/category';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/store/store';
+import { fetchCategories } from '@/store/categorySlice';
+import { useEntries } from '@/hooks/useEntries';
 
 const EntriesScreen = () => {
     const apiUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
     const [modalVisible, setModalVisible] = useState(false);
 
-    const [entries, setEntries] = useState<Entry[]>([]);
-    const [categories, setCategories] = useState<Category[]>([]);
+    // const [entries, setEntries] = useState<Entry[]>([]);
+    const { entries, isLoading, error, createEntry, deleteEntry } = useEntries();
+
+    const dispatch = useDispatch<AppDispatch>()
+    const categories = useSelector((state: RootState) => state.category.categories)
 
     const [newEntry, setNewEntry] = useState<CreateEntryDTO>({
         name: '',
@@ -22,52 +29,71 @@ const EntriesScreen = () => {
 
 
     useEffect(() => {
-        fetchEntries();
-        fetchCategories();
+        // fetchEntries();
+        dispatch(fetchCategories())
     }, []);
   
   
-    const fetchEntries = async () => {
-        try {
-            const response = await fetch(`${apiUrl}/api/entries`); // Replace with your backend URL
-            const data = await response.json();
-            
-            setEntries(data);
-        } catch (error) {
-            console.error('Error fetching categories:', error);
-        }
-    };
-
-    const fetchCategories = async () => {
-        try {
-          const response = await fetch(`${apiUrl}/api/categories`);
-          const data = await response.json();
-          setCategories(data);
-        } catch (error) {
-          console.error('Error fetching categories:', error);
-        }
-    };
-
     const handleAddEntry = async () => {
-        try {
-          const response = await fetch(`${apiUrl}/api/entries`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(newEntry),
-          });
-          console.log(newEntry);
-          
-          if (response.ok) {
-            fetchEntries(); // Refresh the list after adding a new entry
+        createEntry.mutate(newEntry, {
+          onSuccess: () => {
+            console.log("entry added", newEntry);
             setNewEntry({ name: '', amount: 0, category: 0 }); // Clear the form
             setModalVisible(false); // Close the modal
-          }
-        } catch (error) {
-          console.error('Error adding entry:', error);
-        }
+          },
+          onError: (error) => {
+            console.error('Error adding entry:', error);
+            alert('Failed to add entry. Please try again.');
+          },
+        });
     };
+
+    const handleDeleteEntry = (entry: Entry) => {
+        Alert.alert(
+        'Delete Entry',
+        `Are you sure you want to delete this entry (${entry.name})?`,
+        [
+            {
+                text: 'Cancel',
+                style: 'cancel',
+            },
+            {
+                text: 'OK',
+                onPress: async () => {
+                    deleteEntry.mutate(entry, {
+                        onSuccess: () => {
+                            console.log("entry deleted", entry);
+                        },
+                        onError: (error) => {
+                            console.error('Error deleting entry:', error);
+                            alert('Failed to delete entry. Please try again.');
+                        },
+                        });
+                },
+            },
+        ],
+        { cancelable: false }
+    );
+    
+    }
+
+
+    // const handleDeleteEntryBrowser = (entry: Entry) => {
+    //     console.log('Deleting entry:', entry);
+    
+    //     const confirmDelete = window.confirm(`Are you sure you want to delete this category (${entry.name})?`);
+    //     if (confirmDelete) {
+    //        deleteEntry.mutate(entry, {
+    //         onSuccess: () => {
+    //             console.log("entry deleted", entry);
+    //         },
+    //         onError: (error) => {
+    //             console.error('Error deleting entry:', error);
+    //             alert('Failed to delete entry. Please try again.');
+    //         },
+    //         })
+    //     };
+    // }
 
     return (
         <SafeAreaView style={styles.container}>
@@ -79,6 +105,7 @@ const EntriesScreen = () => {
                     <Text>{item.name}</Text>
                     <Text>{item.amount}</Text>
                     <Text>{item.category.title}</Text>
+                    <Button title="X" onPress={() => handleDeleteEntry(item)} />
                 </View>
                 )}
             />
@@ -112,11 +139,16 @@ const EntriesScreen = () => {
                         setNewEntry({ ...newEntry, category: Number(categoryId) })
                     }
                     >
+                    <Picker.Item label="Select ..." value={undefined} />
                     {categories.map((category) => (
                         <Picker.Item key={category.id} label={category.title} value={category.id} />
                     ))}
                     </Picker>
-                    <Button title="Add Entry" onPress={handleAddEntry} />
+                    <Button
+                    title="Add Entry"
+                    onPress={handleAddEntry}
+                    disabled={!newEntry.category || !newEntry.name || newEntry.amount <= 0} // Disable button if category is not selected
+                    />
                     <Button title="Cancel" onPress={() => setModalVisible(false)} />
                 </View>
                 </View>

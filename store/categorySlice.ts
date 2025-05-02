@@ -27,8 +27,12 @@ export const createCategory = createAsyncThunk(
 
 export const deleteCategory = createAsyncThunk(
 	'categories/delete',
-	async (categoryId: number) => {
-		return await CategoriesAPI.deleteCategory(categoryId);
+	async (categoryId: number, { rejectWithValue }) => {
+		try {
+			return await CategoriesAPI.deleteCategory(categoryId);
+		} catch (error: any) {			
+			return rejectWithValue(error.message);
+		}
 	},
 );
 

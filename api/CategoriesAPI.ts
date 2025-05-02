@@ -32,8 +32,12 @@ export class CategoriesAPI {
             method: 'DELETE',
         });
         if (!response.ok) {
-            throw new Error('Failed to delete category');
+            const errorData = await response.json();
+            console.log("errorData", errorData);
+            
+            throw new Error(errorData.message || 'Failed to delete category');
         }
         return await response.json();
     }
 }
+    

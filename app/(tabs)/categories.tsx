@@ -44,32 +44,44 @@ const handleAddCategory = async () => {
     }
 }
 
-
-const handleDeleteCategory = async (category: Category) => {
+const handleDeleteCategory = (category: Category) => {
     console.log('Deleting category:', category);
-    
-    Alert.alert(
-        'Delete Category',
-        `Are you sure you want to delete this category (${category.title})?`,
-        [
-            {
-                text: 'Cancel',
-                style: 'cancel',
-            },
-            {
-                text: 'OK',
-                onPress: async () => {
-                    try {
-                        dispatch(deleteCategory(category.id))
-                    } catch (error) {
-                        console.error('Error deleting category:', error);
-                    }
-                },
-            },
-        ],
-        { cancelable: false }
-    );
+
+    const confirmDelete = window.confirm(`Are you sure you want to delete this category (${category.title})?`);
+    if (confirmDelete) {
+        try {
+            dispatch(deleteCategory(category.id));
+        } catch (error) {
+            console.error('Error deleting category:', error);
+        }
+    }
 };
+
+// const handleDeleteCategory = async (category: Category) => {
+//     console.log('Deleting category:', category);
+    
+//     Alert.alert(
+//         'Delete Category',
+//         `Are you sure you want to delete this category (${category.title})?`,
+//         [
+//             {
+//                 text: 'Cancel',
+//                 style: 'cancel',
+//             },
+//             {
+//                 text: 'OK',
+//                 onPress: async () => {
+//                     try {
+//                         dispatch(deleteCategory(category.id))
+//                     } catch (error) {
+//                         console.error('Error deleting category:', error);
+//                     }
+//                 },
+//             },
+//         ],
+//         { cancelable: false }
+//     );
+// };
 
 
     return (
